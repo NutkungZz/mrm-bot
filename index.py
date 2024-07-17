@@ -46,26 +46,9 @@ def handle_message(event):
 def hello():
     return 'Hello, World!'
 
-# สำหรับ Vercel
-from http.server import BaseHTTPRequestHandler
-
-def handler(event, context):
-    return app(event, context)
-
-class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/plain')
-        self.end_headers()
-        self.wfile.write(b'Hello, World!')
-
-    def do_POST(self):
-        content_length = int(self.headers['Content-Length'])
-        body = self.rfile.read(content_length)
-        self.send_response(200)
-        self.end_headers()
-        response = app({'body': body, 'headers': self.headers}, None)
-        self.wfile.write(response['body'].encode())
-
-if __name__ == "__main__":
-    app.run()
+# สำหรับ Vercel Serverless Function
+def handler(request):
+    if request.method == 'POST':
+        return callback()
+    elif request.method == 'GET':
+        return hello()
