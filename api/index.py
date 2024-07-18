@@ -1,10 +1,8 @@
-from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
+import json
 import os
-
-app = Flask(__name__)
 
 CHANNEL_ACCESS_TOKEN = os.environ.get('CHANNEL_ACCESS_TOKEN')
 CHANNEL_SECRET = os.environ.get('CHANNEL_SECRET')
@@ -12,17 +10,6 @@ CHANNEL_SECRET = os.environ.get('CHANNEL_SECRET')
 line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
 handler = WebhookHandler(CHANNEL_SECRET)
 
-@app.route("/callback", methods=['POST'])
-def callback():
-    signature = request.headers['X-Line-Signature']
-    body = request.get_data(as_text=True)
-    try:
-        handler.handle(body, signature)
-    except InvalidSignatureError:
-        abort(400)
-    return 'OK'
-
-@handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     text = event.message.text
     reply_text = "ขอโทษค่ะ ฉันไม่เข้าใจคำสั่งนี้"
@@ -42,9 +29,29 @@ def handle_message(event):
         event.reply_token,
         TextSendMessage(text=reply_text))
 
-@app.route('/')
-def hello():
-    return 'Hello, World!'
+def handler(event, context):
+    if event['httpMethod'] == 'POST':
+        signature = event['headers'].get('x-line-signature', '')
+        body = event['body']
+        
+        try:
+            handler.handle(body, signature)
+        except InvalidSignatureError:
+            return {
+                'statusCode': 400,
+                'body': json.dumps('Invalid signature')
+            }
+        
+        return {
+            'statusCode': 200,
+            'body': json.dumps('OK')
+        }
+    elif event['httpMethod'] == 'GET':
+        return {
+            'statusCode': 200,
+            'body': json.dumps('Hello, World!')
+        }
 
-if __name__ == "__main__":
-    app.run()
+@handler.add(MessageEvent, message=TextMessage)
+def message_text(event):
+    handle_message(event)
